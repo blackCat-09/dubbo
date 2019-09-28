@@ -31,7 +31,7 @@ import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
 
 /**
  * DubboNamespaceHandler
- *
+ * Dubbo 自定义标签解析器，
  * @export
  */
 public class DubboNamespaceHandler extends NamespaceHandlerSupport {

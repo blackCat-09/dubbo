@@ -25,6 +25,8 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 /**
  * SpringContainer. (SPI, Singleton, ThreadSafe)
+ * 主要负责 Spring 的上下文，加载解析Spring 配置文件
+ * SPI 位于 META-INF.dubbo.internal
  */
 public class SpringContainer implements Container {
 

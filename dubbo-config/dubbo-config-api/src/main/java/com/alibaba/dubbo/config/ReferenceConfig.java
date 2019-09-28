@@ -346,6 +346,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 isJvmRefer = false;
             } else if (InjvmProtocol.getInjvmProtocol().isInjvmRefer(tmpUrl)) {
                 // by default, reference local service if there is
+                // 默认情况下如果本地有服务暴露，引用本地服务
                 isJvmRefer = true;
             } else {
                 isJvmRefer = false;
@@ -361,6 +362,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 logger.info("Using injvm service " + interfaceClass.getName());
             }
         } else {
+            // 用户指定URL，可能是对点直接地址，也可能是注册URL
             if (url != null && url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
                 String[] us = Constants.SEMICOLON_SPLIT_PATTERN.split(url);
                 if (us != null && us.length > 0) {
@@ -377,6 +379,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                     }
                 }
             } else { // assemble URL from register center's configuration
+                // 通过注册中心配置拼装URL
                 List<URL> us = loadRegistries(false);
                 if (us != null && !us.isEmpty()) {
                     for (URL u : us) {
@@ -398,12 +401,14 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
                 URL registryURL = null;
                 for (URL url : urls) {
+                    // invokers 存放是所有可用的服务调用者
                     invokers.add(refprotocol.refer(interfaceClass, url));
                     if (Constants.REGISTRY_PROTOCOL.equals(url.getProtocol())) {
                         registryURL = url; // use last registry url
                     }
                 }
                 if (registryURL != null) { // registry url is available
+                    // 对注册中心的 cluster 只用 AvailableCluster
                     // use AvailableCluster only when register's cluster is available
                     URL u = registryURL.addParameter(Constants.CLUSTER_KEY, AvailableCluster.NAME);
                     invoker = cluster.join(new StaticDirectory(u, invokers));

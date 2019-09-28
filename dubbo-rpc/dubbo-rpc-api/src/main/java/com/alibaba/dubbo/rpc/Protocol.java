@@ -30,6 +30,8 @@ public interface Protocol {
      * Get default port when user doesn't config the port.
      *
      * @return default port
+     *
+     * 获取默认端口、当用户没有配置端口使用。默认端口
      */
     int getDefaultPort();
 
@@ -45,6 +47,15 @@ public interface Protocol {
      * @param invoker Service invoker
      * @return exporter reference for exported service, useful for unexport the service later
      * @throws RpcException thrown when error occurs during export the service, for example: port is occupied
+     *
+     * 暴露远程服务。
+     * 1、协议在接收请求时，应记录请求来源方的地址信息 RpcContext.getContext().setRemoteAddress()
+     *
+     * 2、export 必须是幂等性。也就是暴露同一个URL 的Invoker 两次。和暴露一次没有区别。
+     * 3、export 传入的 invoker 由框架实现并传入。协议不需要关系
+     *
+     *
+     *
      */
     @Adaptive
     <T> Exporter<T> export(Invoker<T> invoker) throws RpcException;
@@ -63,6 +74,14 @@ public interface Protocol {
      * @param url  URL address for the remote service
      * @return invoker service's local proxy
      * @throws RpcException when there's any error while connecting to the service provider
+     *
+     *
+     * 引用远程服务
+     * 1、当用户调用 refer 所返回invoker对象的 invoke() 方法是，协议需相应执行同URL 远端 export 传入的 invoker 对象的invoker
+     * 2、refer 返回 invoker 由协议实现。协议通常需要再次invoker 中发送远程请求
+     * 3、当URL 设置 check = false，连接失败不需要抛出异常。并内部自动恢复。
+     *
+     *
      */
     @Adaptive
     <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException;
@@ -72,6 +91,12 @@ public interface Protocol {
      * 1. Cancel all services this protocol exports and refers <br>
      * 2. Release all occupied resources, for example: connection, port, etc. <br>
      * 3. Protocol can continue to export and refer new service even after it's destroyed.
+     *
+     * 释放协议
+     * 1、取消该协议所有已经暴露和引用的服务
+     * 2、释放协议占用的所有资源。比如连接和端口
+     * 3、协议在释放后，依然能暴露和引用新的服务。
+     *
      */
     void destroy();
 

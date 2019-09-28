@@ -103,19 +103,24 @@ public class ExtensionLoader<T> {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 扩展点加载程序
+     */
     public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
         if (type == null)
             throw new IllegalArgumentException("Extension type == null");
         if (!type.isInterface()) {
             throw new IllegalArgumentException("Extension type(" + type + ") is not interface!");
         }
+        // 只接受 @SPI 注解注释的接口类型
         if (!withExtensionAnnotation(type)) {
             throw new IllegalArgumentException("Extension type(" + type +
                     ") is not extension, because WITHOUT @" + SPI.class.getSimpleName() + " Annotation!");
         }
-
+        // 先从静态缓存中获取对应的 extensionLoader 实例
         ExtensionLoader<T> loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         if (loader == null) {
+            // 如果从 EXTENSION_LOADER 获取的实例为null，则直接产生一个新的实例并存放到 EXTENSION_LOADER 中
             EXTENSION_LOADERS.putIfAbsent(type, new ExtensionLoader<T>(type));
             loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         }
@@ -433,14 +438,24 @@ public class ExtensionLoader<T> {
     }
 
     @SuppressWarnings("unchecked")
+    /**
+     * 获取对应的适配器
+     */
     public T getAdaptiveExtension() {
         Object instance = cachedAdaptiveInstance.get();
+        // 从Adapter 缓存中获取实例对象
         if (instance == null) {
             if (createAdaptiveInstanceError == null) {
+                // 采用双重检测锁保证一致性
                 synchronized (cachedAdaptiveInstance) {
                     instance = cachedAdaptiveInstance.get();
                     if (instance == null) {
                         try {
+                            /**
+                             * 如果获取的缓存对象为null，则通过 createAdapterExtension 方法创建一个并加入缓存中
+                             *
+                             * [createAdaptiveExtension]
+                             */
                             instance = createAdaptiveExtension();
                             cachedAdaptiveInstance.set(instance);
                         } catch (Throwable t) {
@@ -497,6 +512,7 @@ public class ExtensionLoader<T> {
             injectExtension(instance);
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (wrapperClasses != null && !wrapperClasses.isEmpty()) {
+                // 关键代码。将 instance 类通过构造方法注入Wrapper 类。形成调用链。
                 for (Class<?> wrapperClass : wrapperClasses) {
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                 }
@@ -508,10 +524,17 @@ public class ExtensionLoader<T> {
         }
     }
 
+    /**
+     * 参数instance 就是上面说的 protocal&Adaptive 实例
+     * @param instance
+     * @return
+     */
     private T injectExtension(T instance) {
         try {
             if (objectFactory != null) {
+                // 遍历扩展实现类实例的方法
                 for (Method method : instance.getClass().getMethods()) {
+                    // 只处理以Set 开头的 public方法并且参数只能是一个
                     if (method.getName().startsWith("set")
                             && method.getParameterTypes().length == 1
                             && Modifier.isPublic(method.getModifiers())) {
@@ -521,11 +544,19 @@ public class ExtensionLoader<T> {
                         if (method.getAnnotation(DisableInject.class) != null) {
                             continue;
                         }
+                        // 获取方法的参数类型
                         Class<?> pt = method.getParameterTypes()[0];
                         try {
+                            // 通过截取set 方法名获取属性名
                             String property = method.getName().length() > 3 ? method.getName().substring(3, 4).toLowerCase() + method.getName().substring(4) : "";
+                            /**
+                             * 根据参数类型和属性名称从ExtensionFactory 中获取其他扩展点的实现类
+                             * 如果有，则调用 set 方法新注入一个自适应实现类。
+                             * 没有，则返回 protocol&Adapter.
+                             */
                             Object object = objectFactory.getExtension(pt, property);
                             if (object != null) {
+                                // 为 Set 方法注入一个自适应的实现类。
                                 method.invoke(instance, object);
                             }
                         } catch (Exception e) {
@@ -720,6 +751,7 @@ public class ExtensionLoader<T> {
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
+            // [getAdaptiveExtensionClass]
             return injectExtension((T) getAdaptiveExtensionClass().newInstance());
         } catch (Exception e) {
             throw new IllegalStateException("Can not create adaptive extension " + type + ", cause: " + e.getMessage(), e);
@@ -731,12 +763,24 @@ public class ExtensionLoader<T> {
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }
+        // 如果自适应扩展为null，则调用createAdaptiveExtensionClass 方法创建。[createAdaptiveExtensionClass]
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
     private Class<?> createAdaptiveExtensionClass() {
         String code = createAdaptiveExtensionClassCode();
         ClassLoader classLoader = findClassLoader();
+        /**
+         * 动态生成编译类
+         *
+         * Compiler 是SPI接口。同 ExtensionLoader 加载。
+         *
+         * META-INF.dubbo.internal/compiler 文件
+         * 1、AdaptiveCompiler
+         * 2、JdkCompiler
+         * 3、JavassistCompiler 【真正的实现】
+         *
+         */
         com.alibaba.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
         return compiler.compile(code, classLoader);
     }

@@ -83,11 +83,13 @@ public abstract class Proxy {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < ics.length; i++) {
             String itf = ics[i].getName();
+            // 如果服务类不是接口则报错
             if (!ics[i].isInterface())
                 throw new RuntimeException(itf + " is not a interface.");
 
             Class<?> tmp = null;
             try {
+                // 根据类的全路径返回服务接口的class。
                 tmp = Class.forName(itf, false, cl);
             } catch (ClassNotFoundException e) {
             }
@@ -102,6 +104,7 @@ public abstract class Proxy {
         String key = sb.toString();
 
         // get cache by class loader.
+        // 定义缓存对象
         Map<String, Object> cache;
         synchronized (ProxyCacheMap) {
             cache = ProxyCacheMap.get(cl);
